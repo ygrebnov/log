@@ -1,0 +1,7 @@
+vendor
+.DS_Store
+.idea
+.coverage
+/improvements/
+/tools/bin/
+/tools/vendor/

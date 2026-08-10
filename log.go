@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strconv"
+	"time"
 
 	"github.com/ygrebnov/keys"
 	"github.com/ygrebnov/log/internal/core"
@@ -11,8 +12,9 @@ import (
 	"github.com/ygrebnov/log/pkg/types"
 )
 
-type Level = types.Level
+type Record = types.Record
 type Field = types.Field
+type Level = types.Level
 type Kind = types.Kind
 type Format = types.Format
 type Config = config.Config
@@ -33,6 +35,8 @@ const (
 	FormatJSON = types.FormatJSON
 	FormatText = types.FormatText
 )
+
+var NewRecord = types.NewRecord
 
 func String(key keys.Key, value string) Field {
 	return Field{
@@ -114,7 +118,17 @@ func (l *Logger) Log(level Level, msg string, fields ...Field) {
 		return
 	}
 
-	l.handler.Log(level, msg, fields...)
+	record := NewRecord(time.Now(), level, msg, fields...)
+
+	l.handler.LogRecord(record, false)
+}
+
+func (l *Logger) LogRecord(record Record) {
+	if l == nil || l.handler == nil {
+		return
+	}
+
+	l.handler.LogRecord(record, true)
 }
 
 func (l *Logger) Trace(msg string, fields ...Field) {

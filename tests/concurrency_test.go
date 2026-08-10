@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/ygrebnov/keys"
 	"github.com/ygrebnov/log"
 	"github.com/ygrebnov/log/pkg/config"
 	"github.com/ygrebnov/log/pkg/types"
@@ -214,4 +217,107 @@ func TestLogger_ThreadSafety(t *testing.T) {
 			t.Errorf("file line count = %d, want %d", got, want)
 		}
 	})
+}
+
+func TestLogger_LogRecord_SnapshotsRecord(t *testing.T) {
+	const (
+		fieldCount    = 10_000
+		originalValue = "original"
+		mutatedValue  = "mutated"
+	)
+
+	path := filepath.Join(t.TempDir(), "log-record.log")
+
+	cfg := log.Config{
+		Sinks: []log.SinkConfig{
+			{
+				Kind: log.KindFile,
+				Path: path,
+			},
+		},
+	}
+
+	if err := cfg.ApplyDefaults(); err != nil {
+		t.Fatalf("ApplyDefaults() error: %v", err)
+	}
+
+	logger, err := log.NewLogger(&cfg)
+	if err != nil {
+		t.Fatalf("NewLogger() error: %v", err)
+	}
+
+	fields := make([]log.Field, fieldCount)
+	for i := range fields {
+		fields[i] = log.String(
+			keys.New(fmt.Sprintf("field_%d", i)),
+			originalValue,
+		)
+	}
+
+	record := log.NewRecord(
+		time.Now(),
+		log.LevelInfo,
+		"record snapshot",
+		fields...,
+	)
+
+	logger.LogRecord(record)
+
+	// LogRecord must take ownership of a snapshot before returning.
+	//
+	// Mutate the Record concurrently while the sink may still be processing
+	// the queued record. Without snapshotting in LogRecord, this should be
+	// detected by `go test -race`.
+	stop := make(chan struct{})
+	done := make(chan struct{})
+
+	go func() {
+		defer close(done)
+
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+
+			for i := range record.Fields {
+				record.Fields[i].Value = mutatedValue
+			}
+
+			for i := range record.Fields {
+				record.Fields[i].Value = originalValue
+			}
+		}
+	}()
+
+	if err := logger.Close(); err != nil {
+		close(stop)
+		<-done
+		t.Fatalf("Close() error: %v", err)
+	}
+
+	close(stop)
+	<-done
+
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("ReadFile() error: %v", err)
+	}
+
+	output := string(data)
+
+	if !strings.Contains(output, `field_0="original"`) {
+		t.Errorf(
+			"output does not contain original field value:\n%s",
+			output,
+		)
+	}
+
+	if strings.Contains(output, `="mutated"`) {
+		t.Errorf(
+			"output contains value written after LogRecord returned:\n%s",
+			output,
+		)
+	}
 }

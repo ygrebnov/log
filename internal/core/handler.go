@@ -3,7 +3,6 @@ package core
 import (
 	"errors"
 	"sync"
-	"time"
 
 	"github.com/ygrebnov/log/pkg/types"
 )
@@ -27,7 +26,7 @@ func NewHandler(sinks ...*Sink) *Handler {
 	return h
 }
 
-func (h *Handler) Log(level types.Level, message string, fields ...types.Field) {
+func (h *Handler) LogRecord(record types.Record, snapshotFields bool) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 
@@ -35,22 +34,19 @@ func (h *Handler) Log(level types.Level, message string, fields ...types.Field) 
 		return
 	}
 
-	fieldsCopy := make([]types.Field, len(fields))
-	copy(fieldsCopy, fields)
+	if snapshotFields {
+		fields := make([]types.Field, len(record.Fields))
+		copy(fields, record.Fields)
 
-	r := record{
-		time:    time.Now(),
-		level:   level,
-		message: message,
-		fields:  fieldsCopy,
+		record.Fields = fields
 	}
 
 	for _, sink := range h.sinks {
-		if !sink.enabled(level) {
+		if !sink.enabled(record.Level) {
 			continue
 		}
 
-		sink.enqueue(r)
+		sink.enqueue(record)
 	}
 }
 

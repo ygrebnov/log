@@ -34,7 +34,7 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 				Sinks: []config.SinkConfig{
 					{
 						Kind:          types.KindStdErr,
-						Format:        types.FormatJSON,
+						Format:        types.FormatText,
 						Level:         types.LevelInfo,
 						QueueSize:     1024,
 						BufferSize:    65536,
@@ -59,7 +59,7 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 				Sinks: []config.SinkConfig{
 					{
 						Kind:          types.KindStdOut,
-						Format:        types.FormatJSON,
+						Format:        types.FormatText,
 						Level:         types.LevelDebug,
 						QueueSize:     1024,
 						BufferSize:    65536,
@@ -107,7 +107,7 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 					{},
 					{
 						Kind:   types.KindStdOut,
-						Format: types.FormatText,
+						Format: types.FormatJSON,
 						Level:  types.LevelWarn,
 					},
 					{
@@ -121,7 +121,7 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 				Sinks: []config.SinkConfig{
 					{
 						Kind:          types.KindStdErr,
-						Format:        types.FormatJSON,
+						Format:        types.FormatText,
 						Level:         types.LevelInfo,
 						QueueSize:     1024,
 						BufferSize:    65536,
@@ -129,7 +129,7 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 					},
 					{
 						Kind:          types.KindStdOut,
-						Format:        types.FormatText,
+						Format:        types.FormatJSON,
 						Level:         types.LevelWarn,
 						QueueSize:     1024,
 						BufferSize:    65536,
@@ -138,7 +138,7 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 					{
 						Path:          "/tmp/application.log",
 						Kind:          types.KindFile,
-						Format:        types.FormatJSON,
+						Format:        types.FormatText,
 						Level:         types.LevelInfo,
 						QueueSize:     1024,
 						BufferSize:    65536,

@@ -4,6 +4,7 @@ import "github.com/ygrebnov/errorc"
 
 var (
 	ErrInvalidConfig            = errorc.New("invalid config")
+	ErrInvalidRecord            = errorc.New("invalid record")
 	ErrCannotAccessLogFilePath  = errorc.New("cannot access log file path")
 	ErrCannotResolveUserHomeDir = errorc.New("cannot resolve user home dir")
 	ErrInvalidLogLevel          = errorc.New("invalid log level")

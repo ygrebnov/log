@@ -20,7 +20,7 @@ import (
 )
 
 type Sink struct {
-	records chan record
+	records chan types.Record
 	done    chan struct{}
 
 	level types.Level
@@ -39,13 +39,6 @@ type Sink struct {
 
 type closer interface {
 	Close() error
-}
-
-type record struct {
-	time    time.Time
-	level   types.Level
-	message string
-	fields  []types.Field
 }
 
 func NewSink(
@@ -89,7 +82,7 @@ func NewSink(
 	_ = ctx
 
 	return &Sink{
-		records:       make(chan record, cfg.QueueSize),
+		records:       make(chan types.Record, cfg.QueueSize),
 		done:          make(chan struct{}),
 		level:         cfg.Level,
 		writer:        bufio.NewWriterSize(out, cfg.BufferSize),
@@ -102,7 +95,7 @@ func (s *Sink) enabled(level types.Level) bool {
 	return level >= s.level
 }
 
-func (s *Sink) enqueue(r record) {
+func (s *Sink) enqueue(r types.Record) {
 	s.records <- r
 }
 
@@ -154,20 +147,20 @@ func (s *Sink) run() {
 	}
 }
 
-func (s *Sink) write(r record) {
+func (s *Sink) write(r types.Record) {
 	if s.getError() != nil {
 		return
 	}
 
 	var b strings.Builder
 
-	b.WriteString(r.time.Format(time.RFC3339Nano))
+	b.WriteString(r.Time.Format(time.RFC3339Nano))
 	b.WriteByte(' ')
-	b.WriteString(r.level.String())
+	b.WriteString(r.Level.String())
 	b.WriteByte(' ')
-	b.WriteString(r.message)
+	b.WriteString(r.Message)
 
-	for _, field := range r.fields {
+	for _, field := range r.Fields {
 		if field.Key == "" && field.Value == "" {
 			continue
 		}

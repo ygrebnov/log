@@ -154,51 +154,46 @@ func NewSilentLogger() (*Logger, error) {
 	return NewLogger(nil)
 }
 
-func NewStdoutLogger() (*Logger, error) {
-	cfg := &Config{
-		Sinks: []SinkConfig{{Kind: KindStdOut}},
-	}
-
-	if err := cfg.ApplyDefaults(); err != nil {
-		return nil, err
-	}
-
-	return NewLogger(cfg)
-}
-
-func NewStderrLogger() (*Logger, error) {
-	cfg := &Config{
-		Sinks: []SinkConfig{{Kind: KindStdErr}},
-	}
-
-	if err := cfg.ApplyDefaults(); err != nil {
-		return nil, err
-	}
-
-	return NewLogger(cfg)
-}
-
-type fileLoggerConfig struct {
+type loggerConfig struct {
+	level   Level
 	path    string
 	appName string
 }
 
-type FileLoggerOption func(*fileLoggerConfig)
+type Option func(*loggerConfig)
 
-func WithPath(path string) FileLoggerOption {
-	return func(cfg *fileLoggerConfig) {
-		cfg.path = path
+func WithLevel(level Level) Option {
+	return func(config *loggerConfig) {
+		config.level = level
 	}
 }
 
-func WithAppName(appName string) FileLoggerOption {
-	return func(cfg *fileLoggerConfig) {
-		cfg.appName = appName
+func WithPath(path string) Option {
+	return func(config *loggerConfig) {
+		config.path = path
 	}
 }
 
-func NewFileLogger(opts ...FileLoggerOption) (*Logger, error) {
-	o := &fileLoggerConfig{}
+func WithAppName(appName string) Option {
+	return func(config *loggerConfig) {
+		config.appName = appName
+	}
+}
+
+func NewStdoutLogger(opts ...Option) (*Logger, error) {
+	return newSingleSinkLogger(KindStdOut, opts...)
+}
+
+func NewStderrLogger(opts ...Option) (*Logger, error) {
+	return newSingleSinkLogger(KindStdErr, opts...)
+}
+
+func NewFileLogger(opts ...Option) (*Logger, error) {
+	return newSingleSinkLogger(KindFile, opts...)
+}
+
+func newSingleSinkLogger(kind Kind, opts ...Option) (*Logger, error) {
+	o := &loggerConfig{}
 
 	for _, opt := range opts {
 		if opt != nil {
@@ -210,8 +205,9 @@ func NewFileLogger(opts ...FileLoggerOption) (*Logger, error) {
 		AppName: o.appName,
 		Sinks: []SinkConfig{
 			{
-				Kind: KindFile,
-				Path: o.path,
+				Kind:  kind,
+				Level: o.level,
+				Path:  o.path,
 			},
 		},
 	}

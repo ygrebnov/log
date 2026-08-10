@@ -24,7 +24,7 @@ type Config struct {
 type SinkConfig struct {
 	Path          string        `yaml:"path,omitempty"`
 	Kind          types.Kind    `yaml:"kind" default:"stderr" validate:"oneof(stdout,stderr,file)"` // +remote in v2
-	Format        types.Format  `yaml:"format" default:"json" validate:"oneof(json,text)"`
+	Format        types.Format  `yaml:"format" default:"text" validate:"oneof(json,text)"`
 	Level         types.Level   `yaml:"level" default:"0" validate:"oneof(-8,-4,0,4,8,12)"`
 	QueueSize     int           `yaml:"queue_size" default:"1024" validate:"min(1)"`
 	BufferSize    int           `yaml:"buffer_size" default:"65536" validate:"min(1)"`
@@ -32,6 +32,7 @@ type SinkConfig struct {
 }
 
 var binding *modellib.Binding[Config]
+var validationRules []modellib.Rule
 
 func init() {
 	oneOfKindRule, err := getOneOfUnderlyingStringRule[types.Kind]()
@@ -54,17 +55,21 @@ func init() {
 		panic(err)
 	}
 
-	binding, err = modellib.NewBinding[Config](
-		modellib.WithRules(
-			oneOfKindRule,
-			oneOfFormatRule,
-			oneOfLevelRule,
-			nonZeroDurationRule,
-		),
-	)
+	validationRules = []modellib.Rule{
+		oneOfKindRule,
+		oneOfFormatRule,
+		oneOfLevelRule,
+		nonZeroDurationRule,
+	}
+
+	binding, err = modellib.NewBinding[Config](modellib.WithRules(validationRules...))
 	if err != nil {
 		panic(err)
 	}
+}
+
+func GetValidationRules() []modellib.Rule {
+	return validationRules
 }
 
 func getOneOfUnderlyingStringRule[T ~string]() (modellib.Rule, error) {

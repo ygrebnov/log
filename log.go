@@ -164,6 +164,18 @@ func (l *Logger) Close() error {
 	return l.handler.Close()
 }
 
+func (l *Logger) With(fields ...Field) *Logger {
+	if l == nil || l.handler == nil {
+		return l
+	}
+
+	newHandler := l.handler.With(fields...)
+
+	return &Logger{
+		handler: newHandler,
+	}
+}
+
 func NewSilentLogger() (*Logger, error) {
 	return NewLogger(nil)
 }

@@ -211,10 +211,13 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 }
 
 func TestConfig_Validate_Valid(t *testing.T) {
-	tests := []struct {
+	type test struct {
 		name string
 		cfg  config.Config
-	}{
+	}
+
+	tests := make([]test, 0, 17)
+	tests = append(tests, []test{
 		{
 			name: "empty config",
 			cfg:  config.Config{},
@@ -329,7 +332,7 @@ func TestConfig_Validate_Valid(t *testing.T) {
 				},
 			},
 		},
-	}
+	}...)
 
 	for _, level := range []types.Level{
 		types.LevelTrace,
@@ -339,10 +342,7 @@ func TestConfig_Validate_Valid(t *testing.T) {
 		types.LevelError,
 		types.LevelFatal,
 	} {
-		tests = append(tests, struct {
-			name string
-			cfg  config.Config
-		}{
+		tests = append(tests, test{
 			name: "level_" + level.String(),
 			cfg: config.Config{
 				Sinks: []config.SinkConfig{

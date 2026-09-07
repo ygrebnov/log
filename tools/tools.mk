@@ -62,18 +62,7 @@ endef
 # $(1) binary path
 # $(2) version
 define install-golangci-lint
-	@[ -f $(1) ] || { \
-	set -e ;\
-	TMP_DIR=$$(mktemp -d) ;\
-	cd $$TMP_DIR ;\
-	echo "Installing golangci-lint $(2) to $(1)" ;\
-	curl -fsSL -o install.sh https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh ;\
-	chmod 0700 install.sh ;\
-	./install.sh -b $$TMP_DIR $(2) ;\
-	mkdir -p $(dir $(1)) ;\
-	mv $$TMP_DIR/golangci-lint $(1) ;\
-	rm -rf $$TMP_DIR ;\
-	}
+	$(call go-install-tool,$(1),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(2))
 endef
 
 # create-symlink creates a relative symlink to the platform-specific binary.

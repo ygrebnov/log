@@ -27,25 +27,32 @@ const (
 	LevelWarn  Level = 4
 	LevelError Level = 8
 	LevelFatal Level = 12
+
+	levelTraceText = "trace"
+	levelDebugText = "debug"
+	levelInfoText  = "info"
+	levelWarnText  = "warn"
+	levelErrorText = "error"
+	levelFatalText = "fatal"
 )
 
 var levelToString = map[Level]string{
-	LevelTrace: "trace",
-	LevelDebug: "debug",
-	LevelInfo:  "info",
-	LevelWarn:  "warn",
-	LevelError: "error",
-	LevelFatal: "fatal",
+	LevelTrace: levelTraceText,
+	LevelDebug: levelDebugText,
+	LevelInfo:  levelInfoText,
+	LevelWarn:  levelWarnText,
+	LevelError: levelErrorText,
+	LevelFatal: levelFatalText,
 }
 
 var stringToLevel = map[string]Level{
-	"trace":   LevelTrace,
-	"debug":   LevelDebug,
-	"info":    LevelInfo,
-	"warn":    LevelWarn,
-	"warning": LevelWarn,
-	"error":   LevelError,
-	"fatal":   LevelFatal,
+	levelTraceText: LevelTrace,
+	levelDebugText: LevelDebug,
+	levelInfoText:  LevelInfo,
+	levelWarnText:  LevelWarn,
+	"warning":      LevelWarn,
+	levelErrorText: LevelError,
+	levelFatalText: LevelFatal,
 }
 
 func (l Level) String() string {

@@ -10,28 +10,27 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [ 1.22.x, 1.23.x, 1.24.x, 1.25.x, stable ]
+        go-version: [ 1.22.x, 1.23.x, 1.24.x, 1.25.x, 1.26.x, stable ]
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
       - name: Setup Go
-        uses: actions/setup-go@v6.0.0
+        uses: actions/setup-go@v7.0.0
         with:
           go-version: ${{ matrix.go-version }}
           check-latest: true
       - name: Dependencies
         run: go mod tidy
       - name: lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
-          version: v1.63.4
-          verify: false
+          version: v2.13.2
           args: --timeout=10m
       - name: test
         run: make test
       - name: Upload artifacts
         if: matrix.go-version == 'stable'
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: .tests/coverage.html

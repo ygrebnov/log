@@ -26,9 +26,9 @@ type SinkConfig struct {
 	Kind          types.Kind    `yaml:"kind" default:"stderr" validate:"oneof(stdout,stderr,file)"` // +remote in v2
 	Format        types.Format  `yaml:"format" default:"text" validate:"oneof(json,text)"`
 	Level         types.Level   `yaml:"level" default:"0" validate:"oneof(-8,-4,0,4,8,12)"`
-	QueueSize     int           `yaml:"queue_size" default:"1024" validate:"min(1)"`
-	BufferSize    int           `yaml:"buffer_size" default:"65536" validate:"min(1)"`
-	FlushInterval time.Duration `yaml:"flush_interval" default:"1s" validate:"nonZeroDuration"`
+	QueueSize     int           `yaml:"queue_size" env:"QUEUE_SIZE" default:"1024" validate:"min(1)"`
+	BufferSize    int           `yaml:"buffer_size" env:"BUFFER_SIZE" default:"65536" validate:"min(1)"`
+	FlushInterval time.Duration `yaml:"flush_interval" env:"FLUSH_INTERVAL" default:"1s" validate:"nonZeroDuration"`
 }
 
 var binding *modellib.Binding[Config]

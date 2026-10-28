@@ -12,7 +12,7 @@ import (
 func TestLogger_SpecificAndNegativeScenarios(t *testing.T) {
 	t.Run("log after close is ignored", func(t *testing.T) {
 		output := captureStdout(t, func() {
-			logger := newStdoutLogger(t, log.LevelTrace)
+			logger := newStdoutLogger(t, log.LevelTrace, nil)
 
 			logger.Log(log.LevelInfo, "before close")
 
@@ -24,7 +24,7 @@ func TestLogger_SpecificAndNegativeScenarios(t *testing.T) {
 		})
 
 		assertContainsAll(t, output, []string{
-			"info before close",
+			"INFO before close",
 		})
 
 		assertContainsNone(t, output, []string{
@@ -34,7 +34,7 @@ func TestLogger_SpecificAndNegativeScenarios(t *testing.T) {
 
 	t.Run("close is idempotent", func(t *testing.T) {
 		output := captureStdout(t, func() {
-			logger := newStdoutLogger(t, log.LevelInfo)
+			logger := newStdoutLogger(t, log.LevelInfo, nil)
 
 			logger.Log(log.LevelInfo, "record")
 
@@ -47,14 +47,14 @@ func TestLogger_SpecificAndNegativeScenarios(t *testing.T) {
 			}
 		})
 
-		if got := countMessage(output, "info record"); got != 1 {
+		if got := countMessage(output, "INFO record"); got != 1 {
 			t.Fatalf("record count = %d, want 1:\n%s", got, output)
 		}
 	})
 
 	t.Run("nil error field", func(t *testing.T) {
 		output := captureStdout(t, func() {
-			logger := newStdoutLogger(t, log.LevelInfo)
+			logger := newStdoutLogger(t, log.LevelInfo, nil)
 
 			logger.Log(
 				log.LevelInfo,
@@ -68,14 +68,14 @@ func TestLogger_SpecificAndNegativeScenarios(t *testing.T) {
 		})
 
 		assertContainsAll(t, output, []string{
-			`info nil error`,
-			`cause=""`,
+			`INFO nil error,`,
+			`cause=null`,
 		})
 	})
 
 	t.Run("all levels", func(t *testing.T) {
 		output := captureStdout(t, func() {
-			logger := newStdoutLogger(t, log.LevelTrace)
+			logger := newStdoutLogger(t, log.LevelTrace, nil)
 
 			levels := []log.Level{
 				log.LevelTrace,
@@ -103,7 +103,7 @@ func TestLogger_SpecificAndNegativeScenarios(t *testing.T) {
 			log.LevelError,
 			log.LevelFatal,
 		} {
-			want := fmt.Sprintf("%s %s message", level, level)
+			want := fmt.Sprintf("%s %s message", strings.ToUpper(level.String()), level)
 			if !strings.Contains(output, want) {
 				t.Errorf("output does not contain %q:\n%s", want, output)
 			}

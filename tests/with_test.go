@@ -27,7 +27,7 @@ func TestLogger_With(t *testing.T) {
 				logger.Info("request received")
 			},
 			want: []string{
-				`info request received`,
+				`INFO request received,`,
 				`service="api"`,
 			},
 		},
@@ -41,7 +41,7 @@ func TestLogger_With(t *testing.T) {
 				base.Info("base record")
 			},
 			want: []string{
-				`info base record`,
+				`INFO base record`,
 			},
 			wantNot: []string{
 				`service="api"`,
@@ -55,15 +55,15 @@ func TestLogger_With(t *testing.T) {
 						log.String(keys.New("service"), "api"),
 					).
 					With(
-						log.String(keys.New("request_id"), "123"),
+						log.Int(keys.New("request_id"), 123),
 					)
 
 				logger.Info("request completed")
 			},
 			want: []string{
-				`info request completed`,
+				`INFO request completed,`,
 				`service="api"`,
-				`request_id="123"`,
+				`request_id=123`,
 			},
 		},
 		{
@@ -81,7 +81,7 @@ func TestLogger_With(t *testing.T) {
 				)
 			},
 			want: []string{
-				`service="api" source="bound" source="record" status="200"`,
+				`service="api" source="bound" source="record" status=200`,
 			},
 		},
 		{
@@ -99,12 +99,12 @@ func TestLogger_With(t *testing.T) {
 				second.Info("second record")
 			},
 			want: []string{
-				`info first record component="first"`,
-				`info second record component="second"`,
+				`INFO first record, component="first"`,
+				`INFO second record, component="second"`,
 			},
 			wantNot: []string{
-				`info first record component="second"`,
-				`info second record component="first"`,
+				`INFO first record, component="second"`,
+				`INFO second record, component="first"`,
 			},
 		},
 	}
@@ -191,7 +191,7 @@ func TestLogger_With_SharedLifecycle(t *testing.T) {
 
 	if !strings.Contains(
 		output,
-		`info before close service="api"`,
+		`INFO before close, service="api"`,
 	) {
 		t.Errorf(
 			"output does not contain expected record:\n%s",
@@ -204,6 +204,10 @@ func TestLogger_With_SharedLifecycle(t *testing.T) {
 			"output contains record written after Close():\n%s",
 			output,
 		)
+	}
+
+	if errClose := base.Close(); errClose != nil {
+		t.Fatalf("second Close() error: %v", errClose)
 	}
 }
 

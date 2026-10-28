@@ -57,7 +57,7 @@ func TestLogger_Stderr(t *testing.T) {
 				}
 			})
 
-			want := tt.level.String() + " " + tt.message
+			want := strings.ToUpper(tt.level.String()) + " " + tt.message
 			if !strings.Contains(output, want) {
 				t.Fatalf("output does not contain %q:\n%s", want, output)
 			}

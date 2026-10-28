@@ -17,13 +17,16 @@ type testRecord struct {
 	message string
 }
 
-func newStdoutLogger(t *testing.T, level log.Level) *log.Logger {
+func newStdoutLogger(t *testing.T, level log.Level, queueSize *int) *log.Logger {
 	t.Helper()
 
 	cfg := &config.Config{
 		Sinks: []config.SinkConfig{
 			textSink(types.KindStdOut, level),
 		},
+	}
+	if queueSize != nil {
+		cfg.Sinks[0].QueueSize = *queueSize
 	}
 	err := cfg.ApplyDefaults()
 	if err != nil {

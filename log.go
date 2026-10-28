@@ -3,7 +3,6 @@ package log
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/ygrebnov/keys"
@@ -17,6 +16,7 @@ type Field = types.Field
 type Level = types.Level
 type Kind = types.Kind
 type Format = types.Format
+type TimestampFormat = types.TimestampFormat
 type Config = config.Config
 type SinkConfig = config.SinkConfig
 
@@ -34,46 +34,39 @@ const (
 
 	FormatJSON = types.FormatJSON
 	FormatText = types.FormatText
+
+	TimestampFormatRFC3339Nano = types.TimestampFormatRFC3339Nano
+	TimestampFormatRFC3339     = types.TimestampFormatRFC3339
 )
 
 var NewRecord = types.NewRecord
 
 func String(key keys.Key, value string) Field {
-	return Field{
-		Key:   key,
-		Value: value,
-	}
+	return types.NewStringField(key, value)
 }
 
 func Int(key keys.Key, value int) Field {
-	return Field{
-		Key:   key,
-		Value: strconv.Itoa(value),
-	}
+	return types.NewIntField(key, value)
+}
+
+func Int64(key keys.Key, value int64) Field {
+	return types.NewInt64Field(key, value)
 }
 
 func Bool(key keys.Key, value bool) Field {
-	return Field{
-		Key:   key,
-		Value: strconv.FormatBool(value),
-	}
+	return types.NewBoolField(key, value)
 }
 
 func Err(key keys.Key, err error) Field {
-	if err == nil {
-		return Field{Key: key}
-	}
-
-	return Field{
-		Key:   key,
-		Value: err.Error(),
-	}
+	return types.NewErrField(key, err)
 }
 
 type Logger struct {
 	handler *core.Handler
 }
 
+// NewLogger creates a new logger with the provided configuration.
+// If cfg is nil, a silent logger without sinks will be created.
 func NewLogger(cfg *config.Config) (*Logger, error) {
 	return NewLoggerCtx(context.Background(), cfg)
 }
@@ -120,7 +113,10 @@ func (l *Logger) Log(level Level, msg string, fields ...Field) {
 
 	record := NewRecord(time.Now(), level, msg, fields...)
 
-	l.handler.LogRecord(record, false)
+	// copy fields to protect against modification after the call, for example:
+	// logger.Info("request", fields...)
+	// fields[0] = log.String(keys.New("status"), "completed")
+	l.handler.LogRecord(record, true)
 }
 
 func (l *Logger) LogRecord(record Record) {
@@ -164,6 +160,9 @@ func (l *Logger) Close() error {
 	return l.handler.Close()
 }
 
+// With returns a new logger with the provided fields added to all log records.
+// Loggers created using With share the parent’s sinks.
+// Closing any of them closes the shared logging resources.
 func (l *Logger) With(fields ...Field) *Logger {
 	if l == nil || l.handler == nil {
 		return l
@@ -182,6 +181,7 @@ func NewSilentLogger() (*Logger, error) {
 
 type loggerConfig struct {
 	level   Level
+	format  Format
 	path    string
 	appName string
 }
@@ -206,14 +206,29 @@ func WithAppName(appName string) Option {
 	}
 }
 
+func WithFormat(format Format) Option {
+	return func(config *loggerConfig) {
+		config.format = format
+	}
+}
+
+// NewStdoutLogger creates a new logger that writes to stdout.
+// By default, logger uses the stdout sink default configuration.
+// Use WithLevel or WithFormat options to customize it.
 func NewStdoutLogger(opts ...Option) (*Logger, error) {
 	return newSingleSinkLogger(KindStdOut, opts...)
 }
 
+// NewStderrLogger creates a new logger that writes to stderr.
+// By default, logger uses the stderr sink default configuration.
+// Use WithLevel or WithFormat options to customize it.
 func NewStderrLogger(opts ...Option) (*Logger, error) {
 	return newSingleSinkLogger(KindStdErr, opts...)
 }
 
+// NewFileLogger creates a new logger that writes to a file.
+// By default, logger uses the file sink default configuration.
+// Use WithLevel, WithFormat, WithAppName, or WithPath options to customize it.
 func NewFileLogger(opts ...Option) (*Logger, error) {
 	return newSingleSinkLogger(KindFile, opts...)
 }
@@ -231,9 +246,10 @@ func newSingleSinkLogger(kind Kind, opts ...Option) (*Logger, error) {
 		AppName: o.appName,
 		Sinks: []SinkConfig{
 			{
-				Kind:  kind,
-				Level: o.level,
-				Path:  o.path,
+				Kind:   kind,
+				Level:  o.level,
+				Format: o.format,
+				Path:   o.path,
 			},
 		},
 	}

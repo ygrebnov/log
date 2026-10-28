@@ -79,6 +79,10 @@ linters:
       - legacy
       - std-error-handling
     rules:
+      - path: ^(pkg/config/config\.go)$
+        linters:
+          - lll
+
       - linters:
           - dogsled
           - dupl

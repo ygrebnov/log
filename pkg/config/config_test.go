@@ -33,12 +33,13 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 			want: config.Config{
 				Sinks: []config.SinkConfig{
 					{
-						Kind:          types.KindStdErr,
-						Format:        types.FormatText,
-						Level:         types.LevelInfo,
-						QueueSize:     1024,
-						BufferSize:    65536,
-						FlushInterval: time.Second,
+						Kind:            types.KindStdErr,
+						Format:          types.FormatText,
+						Level:           types.LevelInfo,
+						TimestampFormat: types.TimestampFormatRFC3339Nano,
+						QueueSize:       1024,
+						BufferSize:      65536,
+						FlushInterval:   time.Second,
 					},
 				},
 			},
@@ -58,12 +59,13 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 				AppName: "application",
 				Sinks: []config.SinkConfig{
 					{
-						Kind:          types.KindStdOut,
-						Format:        types.FormatText,
-						Level:         types.LevelDebug,
-						QueueSize:     1024,
-						BufferSize:    65536,
-						FlushInterval: time.Second,
+						Kind:            types.KindStdOut,
+						Format:          types.FormatText,
+						Level:           types.LevelDebug,
+						TimestampFormat: types.TimestampFormatRFC3339Nano,
+						QueueSize:       1024,
+						BufferSize:      65536,
+						FlushInterval:   time.Second,
 					},
 				},
 			},
@@ -88,13 +90,14 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 				AppName: "application",
 				Sinks: []config.SinkConfig{
 					{
-						Path:          "/tmp/application.log",
-						Kind:          types.KindFile,
-						Format:        types.FormatText,
-						Level:         types.LevelTrace,
-						QueueSize:     64,
-						BufferSize:    4096,
-						FlushInterval: 250 * time.Millisecond,
+						Path:            "/tmp/application.log",
+						Kind:            types.KindFile,
+						Format:          types.FormatText,
+						Level:           types.LevelTrace,
+						TimestampFormat: types.TimestampFormatRFC3339Nano,
+						QueueSize:       64,
+						BufferSize:      4096,
+						FlushInterval:   250 * time.Millisecond,
 					},
 				},
 			},
@@ -111,8 +114,9 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 						Level:  types.LevelWarn,
 					},
 					{
-						Path: "/tmp/application.log",
-						Kind: types.KindFile,
+						Path:            "/tmp/application.log",
+						Kind:            types.KindFile,
+						TimestampFormat: types.TimestampFormatRFC3339,
 					},
 				},
 			},
@@ -120,29 +124,32 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 				AppName: "application",
 				Sinks: []config.SinkConfig{
 					{
-						Kind:          types.KindStdErr,
-						Format:        types.FormatText,
-						Level:         types.LevelInfo,
-						QueueSize:     1024,
-						BufferSize:    65536,
-						FlushInterval: time.Second,
+						Kind:            types.KindStdErr,
+						Format:          types.FormatText,
+						Level:           types.LevelInfo,
+						TimestampFormat: types.TimestampFormatRFC3339Nano,
+						QueueSize:       1024,
+						BufferSize:      65536,
+						FlushInterval:   time.Second,
 					},
 					{
-						Kind:          types.KindStdOut,
-						Format:        types.FormatJSON,
-						Level:         types.LevelWarn,
-						QueueSize:     1024,
-						BufferSize:    65536,
-						FlushInterval: time.Second,
+						Kind:            types.KindStdOut,
+						Format:          types.FormatJSON,
+						Level:           types.LevelWarn,
+						TimestampFormat: types.TimestampFormatRFC3339Nano,
+						QueueSize:       1024,
+						BufferSize:      65536,
+						FlushInterval:   time.Second,
 					},
 					{
-						Path:          "/tmp/application.log",
-						Kind:          types.KindFile,
-						Format:        types.FormatText,
-						Level:         types.LevelInfo,
-						QueueSize:     1024,
-						BufferSize:    65536,
-						FlushInterval: time.Second,
+						Path:            "/tmp/application.log",
+						Kind:            types.KindFile,
+						Format:          types.FormatText,
+						Level:           types.LevelInfo,
+						TimestampFormat: types.TimestampFormatRFC3339,
+						QueueSize:       1024,
+						BufferSize:      65536,
+						FlushInterval:   time.Second,
 					},
 				},
 			},
@@ -152,24 +159,26 @@ func TestConfig_ApplyDefaults(t *testing.T) {
 			cfg: config.Config{
 				Sinks: []config.SinkConfig{
 					{
-						Kind:          types.Kind("invalid"),
-						Format:        types.Format("invalid"),
-						Level:         types.Level(100),
-						QueueSize:     -1,
-						BufferSize:    -1,
-						FlushInterval: -time.Second,
+						Kind:            types.Kind("invalid"),
+						Format:          types.Format("invalid"),
+						Level:           types.Level(100),
+						TimestampFormat: types.TimestampFormat("invalid"),
+						QueueSize:       -1,
+						BufferSize:      -1,
+						FlushInterval:   -time.Second,
 					},
 				},
 			},
 			want: config.Config{
 				Sinks: []config.SinkConfig{
 					{
-						Kind:          types.Kind("invalid"),
-						Format:        types.Format("invalid"),
-						Level:         types.Level(100),
-						QueueSize:     -1,
-						BufferSize:    -1,
-						FlushInterval: -time.Second,
+						Kind:            types.Kind("invalid"),
+						Format:          types.Format("invalid"),
+						Level:           types.Level(100),
+						TimestampFormat: types.TimestampFormat("invalid"),
+						QueueSize:       -1,
+						BufferSize:      -1,
+						FlushInterval:   -time.Second,
 					},
 				},
 			},
@@ -329,6 +338,18 @@ func TestConfig_Validate_Valid(t *testing.T) {
 					validSink(types.KindStdOut),
 					validSink(types.KindStdErr),
 					validSink(types.KindFile),
+				},
+			},
+		},
+		{
+			name: "rfc3339 timestamp format",
+			cfg: config.Config{
+				Sinks: []config.SinkConfig{
+					func() config.SinkConfig {
+						sink := validSink(types.KindStdOut)
+						sink.TimestampFormat = types.TimestampFormatRFC3339
+						return sink
+					}(),
 				},
 			},
 		},
@@ -553,6 +574,30 @@ func TestConfig_Validate_Invalid(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "invalid timestamp format",
+			cfg: config.Config{
+				Sinks: []config.SinkConfig{
+					func() config.SinkConfig {
+						sink := validSink(types.KindStdOut)
+						sink.TimestampFormat = types.TimestampFormat("unix")
+						return sink
+					}(),
+				},
+			},
+		},
+		{
+			name: "empty timestamp format",
+			cfg: config.Config{
+				Sinks: []config.SinkConfig{
+					func() config.SinkConfig {
+						sink := validSink(types.KindStdOut)
+						sink.TimestampFormat = ""
+						return sink
+					}(),
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -657,11 +702,12 @@ func TestConfig_ApplyDefaultsThenValidate(t *testing.T) {
 
 func validSink(kind types.Kind) config.SinkConfig {
 	return config.SinkConfig{
-		Kind:          kind,
-		Format:        types.FormatJSON,
-		Level:         types.LevelInfo,
-		QueueSize:     1024,
-		BufferSize:    65536,
-		FlushInterval: time.Second,
+		Kind:            kind,
+		Format:          types.FormatJSON,
+		Level:           types.LevelInfo,
+		TimestampFormat: types.TimestampFormatRFC3339Nano,
+		QueueSize:       1024,
+		BufferSize:      65536,
+		FlushInterval:   time.Second,
 	}
 }

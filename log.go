@@ -76,6 +76,10 @@ func NewLoggerCtx(ctx context.Context, cfg *config.Config) (l *Logger, e error) 
 		cfg = &config.Config{}
 	}
 
+	if err := cfg.ApplyDefaults(); err != nil {
+		return nil, err
+	}
+
 	if err := cfg.Validate(ctx); err != nil {
 		return nil, err
 	}
@@ -252,10 +256,6 @@ func newSingleSinkLogger(kind Kind, opts ...Option) (*Logger, error) {
 				Path:   o.path,
 			},
 		},
-	}
-
-	if err := cfg.ApplyDefaults(); err != nil {
-		return nil, err
 	}
 
 	return NewLogger(cfg)

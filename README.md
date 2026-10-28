@@ -45,7 +45,8 @@ import (
 )
 
 func main() {
-    logger, err := log.NewFileLogger(log.WithPath("app.log"))
+	// Create a file logger that writes to the log file in the OS default application data directory.
+    logger, err := log.NewFileLogger(log.WithAppName("myapp"))
     if err != nil {
         logpkg.Fatalf("cannot initialize logger: %v", err)
     }
@@ -53,14 +54,6 @@ func main() {
     
     // Log a message with structured fields.
     logger.Warn("Disk space low", log.String("disk", "/dev/sda1"), log.Int("remaining_mb", 512))
-	
-	// Alternatively, provide an application name to store the log file in the operating system’s default application data directory.
-    logger2, err := log.NewFileLogger(log.WithAppName("myapp"))
-    if err != nil {
-        logpkg.Fatalf("cannot initialize logger: %v", err)
-    }
-    defer logger2.Close()
-    logger2.Error("application error", log.String("module", "auth"), log.String("user", "Bob"))
 }
 ```
 
@@ -84,9 +77,8 @@ func main() {
             },
             {
                 Kind:   log.KindFile,
-                Format: log.FormatText,
+                Format: log.FormatJSON,
                 Level:  log.LevelDebug,
-                Path:   "app.log",
             },
         },
     }
@@ -108,9 +100,45 @@ func main() {
 }
 ```
 
+### File Sink Security
+
+When no custom path is configured, the file sink creates <appName>.log in the operating system's default per-user application data directory. This is the recommended configuration for applications that need file-based logging.
+
+A custom `path` may be configured when logs must be written to a specific location, such as a container volume or an application-managed log directory.
+
+```go
+import (
+    logpkg "log"
+	
+    "github.com/ygrebnov/log"
+)
+
+func main() {
+	// Relative paths are resolved against the process's current working directory, 
+	// not the directory containing the executable.
+    logger, err := log.NewFileLogger(log.WithPath("app.log"))
+    if err != nil {
+        logpkg.Fatalf("cannot initialize logger: %v", err)
+    }
+    defer logger.Close()
+    logger.Error("application error", log.String("module", "auth"), log.String("user", "Bob"))
+}
+```
+
+**Security considerations for custom paths:**
+
+- Use a trusted directory whose path components cannot be replaced by untrusted users or processes.
+- Avoid shared writable directories and attacker-controlled parent directories.
+- Ensure that the application has the permissions required to create and append to the log file.
+- Do not accept log paths directly from untrusted input.
+
+The logger uses Go's `os.Root` to confine file operations to the opened parent directory. However, this does not prevent an attacker from redirecting the parent path before that directory is opened. Filesystem permissions and ownership remain the application's responsibility.
+
+For containerized applications, prefer stdout/stderr logging where appropriate. Use a custom file path when persistent file-based logging is explicitly required.
+
 ## Installation
 
-Requires Go 1.22 or later.
+Requires Go 1.25.12 or later.
 
 ```shell
 go get github.com/ygrebnov/log@latest

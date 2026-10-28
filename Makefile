@@ -11,13 +11,11 @@ lint: install-golangci-lint
 .PHONY: test
 test:
 	@echo "Running tests..."
-	@go clean -testcache
 	@go test ./... -count=1 -timeout=600s
 
 .PHONY: test-cov
 test-cov:
 	@echo "Running tests with coverage..."
-	@go clean -testcache
 	@rm -rf $(COVERAGE_PATH)
 	@mkdir -p $(COVERAGE_PATH)
 	@go test -v -coverpkg=./... ./... -coverprofile $(COVERAGE_PATH)coverage.txt -count=1 -timeout=600s
@@ -27,9 +25,19 @@ test-cov:
 .PHONY: test-race
 test-race:
 	@echo "Running tests with race detector..."
-	@go clean -testcache
 	@go test ./... -race -count=1 -timeout=600s
 
+.PHONY: test-stress
+test-stress:
+	@echo "Running stress tests..."
+	@go test ./... -tags=stress -count=1 -timeout=600s
+
+.PHONY: cross-compile-windows
+cross-compile-windows:
+	@echo "Cross-compiling tests for Windows..."
+	@GOOS=windows GOARCH=amd64 \
+	  go test ./... -run '^$$' -exec=true
+
 .PHONY: verify
-verify: lint test-race
+verify: lint test-race cross-compile-windows
 	@echo "All verifications passed successfully."

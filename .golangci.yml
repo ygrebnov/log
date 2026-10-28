@@ -93,6 +93,7 @@ linters:
           - gosec
           - govet
           - lll
+          - misspell
           - revive
           - staticcheck
           - unparam

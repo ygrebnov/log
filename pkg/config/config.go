@@ -22,29 +22,20 @@ type Config struct {
 }
 
 type SinkConfig struct {
-	Path          string        `yaml:"path,omitempty"`
-	Kind          types.Kind    `yaml:"kind" default:"stderr" validate:"oneof(stdout,stderr,file)"` // +remote in v2
-	Format        types.Format  `yaml:"format" default:"text" validate:"oneof(json,text)"`
-	Level         types.Level   `yaml:"level" default:"0" validate:"oneof(-8,-4,0,4,8,12)"`
-	QueueSize     int           `yaml:"queue_size" env:"QUEUE_SIZE" default:"1024" validate:"min(1)"`
-	BufferSize    int           `yaml:"buffer_size" env:"BUFFER_SIZE" default:"65536" validate:"min(1)"`
-	FlushInterval time.Duration `yaml:"flush_interval" env:"FLUSH_INTERVAL" default:"1s" validate:"nonZeroDuration"`
+	Path            string                `yaml:"path,omitempty"`
+	Kind            types.Kind            `yaml:"kind" default:"stderr" validate:"oneof(stdout,stderr,file)"` // +remote in v2
+	Format          types.Format          `yaml:"format" default:"text" validate:"oneof(json,text)"`
+	Level           types.Level           `yaml:"level" default:"0" validate:"oneof(-8,-4,0,4,8,12)"`
+	TimestampFormat types.TimestampFormat `yaml:"timestamp_format" default:"rfc3339nano" validate:"oneof(rfc3339nano,rfc3339)"`
+	QueueSize       int                   `yaml:"queue_size" env:"QUEUE_SIZE" default:"1024" validate:"min(1)"`
+	BufferSize      int                   `yaml:"buffer_size" env:"BUFFER_SIZE" default:"65536" validate:"min(1)"`
+	FlushInterval   time.Duration         `yaml:"flush_interval" env:"FLUSH_INTERVAL" default:"1s" validate:"nonZeroDuration"`
 }
 
 var binding *modellib.Binding[Config]
 var validationRules []modellib.Rule
 
 func init() {
-	oneOfKindRule, err := getOneOfUnderlyingStringRule[types.Kind]()
-	if err != nil {
-		panic(err)
-	}
-
-	oneOfFormatRule, err := getOneOfUnderlyingStringRule[types.Format]()
-	if err != nil {
-		panic(err)
-	}
-
 	oneOfLevelRule, err := getOneOfUnderlyingIntRule[types.Level]()
 	if err != nil {
 		panic(err)
@@ -56,8 +47,6 @@ func init() {
 	}
 
 	validationRules = []modellib.Rule{
-		oneOfKindRule,
-		oneOfFormatRule,
 		oneOfLevelRule,
 		nonZeroDurationRule,
 	}
@@ -70,29 +59,6 @@ func init() {
 
 func GetValidationRules() []modellib.Rule {
 	return validationRules
-}
-
-func getOneOfUnderlyingStringRule[T ~string]() (modellib.Rule, error) {
-	return modellib.NewRule[T]("oneof", func(v T, params ...string) error {
-		if len(params) == 0 {
-			return errorc.With(
-				modelliberrors.ErrRuleMissingParameter,
-				errorc.String(keys.RuleName, "oneof"),
-			)
-		}
-		for _, p := range params {
-			if string(v) == p {
-				return nil
-			}
-		}
-
-		return errorc.With(
-			modelliberrors.ErrRuleConstraintViolated,
-			errorc.String(keys.RuleName, "oneof"),
-			errorc.String(keys.RuleParamName, "allowed"),
-			errorc.String(keys.RuleParamValue, strings.Join(params, ",")),
-		)
-	})
 }
 
 func getOneOfUnderlyingIntRule[T ~int]() (modellib.Rule, error) {

@@ -88,7 +88,7 @@ func TestLogger_File(t *testing.T) {
 			output := string(data)
 
 			for _, record := range tt.records {
-				want := record.level.String() + " " + record.message
+				want := strings.ToUpper(record.level.String()) + " " + record.message
 				if !strings.Contains(output, want) {
 					t.Errorf("file output does not contain %q:\n%s", want, output)
 				}
@@ -119,7 +119,7 @@ func TestLogger_File_AppName_DefaultPath(t *testing.T) {
 		t.Fatalf("ReadFile(%q) error: %v", logPath, err)
 	}
 
-	if !strings.Contains(string(data), "info default path message") {
+	if !strings.Contains(string(data), "INFO default path message") {
 		t.Fatalf(
 			"log file does not contain expected record\npath: %s\ncontent:\n%s",
 			logPath,

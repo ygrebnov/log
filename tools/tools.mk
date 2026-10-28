@@ -10,11 +10,11 @@ BIN_DIR			?= $(TOOLS_DIR)/bin
 OS		:= $(shell uname -s | tr A-Z a-z)
 ARCH	:= $(shell uname -m)
 
-GOLANGCI_LINT_VERSION	?= $(shell grep github.com/golangci/golangci-lint $(TOOLS_MOD_FILE) | awk '{print $$3}')
+GOLANGCI_LINT_VERSION ?= $(shell GOTOOLCHAIN=auto go -C $(TOOLS_DIR) list -m -f '{{.Version}}' github.com/golangci/golangci-lint/v2)
 GOLANGCI_LINT	:= $(BIN_DIR)/golangci-lint-$(OS)-$(ARCH)-$(GOLANGCI_LINT_VERSION)
 
 $(GOLANGCI_LINT):
-	$(call install-golangci-lint,$@,$(GOLANGCI_LINT_VERSION))
+	$(call go-install-tool,$@,github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
 
 GOLANGCI_LINT_LINK 	:= $(BIN_DIR)/golangci-lint
 
@@ -46,23 +46,15 @@ update-tools: clean-tools install-tools
 define go-install-tool
 	@[ -f $(1) ] || { \
 	set -e ;\
-	TMP_DIR=$$(mktemp -d) ;\
+	TMP_DIR=$$(mktemp -d); \
+	trap 'rm -rf "$$TMP_DIR"' EXIT; \
 	cd $$TMP_DIR ;\
 	echo "Installing $(2)@$(3) to $(1)" ;\
-	go mod init tmp ;\
-	GOBIN=$$TMP_DIR go install $(2)@$(3) ;\
+	GOTOOLCHAIN=auto go mod init tmp ;\
+	GOBIN=$$TMP_DIR GOTOOLCHAIN=auto go install $(2)@$(3) ;\
 	mkdir -p $(dir $(1)) ;\
 	mv $$TMP_DIR/$$(basename $(2)) $(1) ;\
-	rm -rf $$TMP_DIR ;\
 	}
-endef
-
-# install-golangci-lint installs golangci-lint.
-#
-# $(1) binary path
-# $(2) version
-define install-golangci-lint
-	$(call go-install-tool,$(1),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(2))
 endef
 
 # create-symlink creates a relative symlink to the platform-specific binary.

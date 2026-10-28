@@ -33,12 +33,12 @@ func TestLogger_StdoutAndFile(t *testing.T) {
 				{level: log.LevelWarn, message: "second"},
 			},
 			wantStdout: []string{
-				"info first",
-				"warn second",
+				"INFO first",
+				"WARN second",
 			},
 			wantFile: []string{
-				"info first",
-				"warn second",
+				"INFO first",
+				"WARN second",
 			},
 		},
 		{
@@ -50,14 +50,14 @@ func TestLogger_StdoutAndFile(t *testing.T) {
 				{level: log.LevelInfo, message: "info everywhere"},
 			},
 			wantStdout: []string{
-				"info info everywhere",
+				"INFO info everywhere",
 			},
 			wantNotStdout: []string{
-				"debug only in file",
+				"DEBUG debug only in file",
 			},
 			wantFile: []string{
-				"debug debug only in file",
-				"info info everywhere",
+				"DEBUG debug only in file",
+				"INFO info everywhere",
 			},
 		},
 		{
@@ -70,16 +70,16 @@ func TestLogger_StdoutAndFile(t *testing.T) {
 				{level: log.LevelError, message: "error everywhere"},
 			},
 			wantStdout: []string{
-				"debug debug stdout",
-				"info info stdout",
-				"error error everywhere",
+				"DEBUG debug stdout",
+				"INFO info stdout",
+				"ERROR error everywhere",
 			},
 			wantFile: []string{
-				"error error everywhere",
+				"ERROR error everywhere",
 			},
 			wantNotFile: []string{
-				"debug stdout",
-				"info stdout",
+				"DEBUG debug stdout",
+				"INFO info stdout",
 			},
 		},
 	}

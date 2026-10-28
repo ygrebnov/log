@@ -23,7 +23,7 @@ func TestLogger_Stdout(t *testing.T) {
 				logger.Log(log.LevelInfo, "application started")
 			},
 			want: []string{
-				`info application started`,
+				`INFO application started`,
 			},
 		},
 		{
@@ -38,10 +38,10 @@ func TestLogger_Stdout(t *testing.T) {
 				)
 			},
 			want: []string{
-				`warn request completed`,
+				`WARN request completed`,
 				`log.message="hello"`,
-				`log.level="42"`,
-				`enabled="true"`,
+				`log.level=42`,
+				`enabled=true`,
 			},
 		},
 		{
@@ -54,7 +54,7 @@ func TestLogger_Stdout(t *testing.T) {
 				)
 			},
 			want: []string{
-				`error operation failed`,
+				`ERROR operation failed`,
 				`cause="boom"`,
 			},
 		},
@@ -68,7 +68,7 @@ func TestLogger_Stdout(t *testing.T) {
 				)
 			},
 			want: []string{
-				`info quoted`,
+				`INFO quoted`,
 				`log.message="hello \"world\"\nnext"`,
 			},
 		},
@@ -80,8 +80,8 @@ func TestLogger_Stdout(t *testing.T) {
 				logger.Log(log.LevelWarn, "warn message")
 			},
 			want: []string{
-				`info info message`,
-				`warn warn message`,
+				`INFO info message`,
+				`WARN warn message`,
 			},
 			wantNot: []string{
 				`debug message`,

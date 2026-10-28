@@ -21,10 +21,10 @@ type Handler struct {
 
 func NewHandler(sinks ...*Sink) *Handler {
 	state := &handlerState{
-		sinks: sinks,
+		sinks: append([]*Sink(nil), sinks...),
 	}
 
-	for _, sink := range sinks {
+	for _, sink := range state.sinks {
 		sink.start()
 	}
 
@@ -81,13 +81,6 @@ func (h *Handler) Close() error {
 }
 
 func (h *Handler) With(fields ...types.Field) *Handler {
-	h.state.mu.RLock()
-	defer h.state.mu.RUnlock()
-
-	if h.state.closed {
-		return h
-	}
-
 	newFields := make([]types.Field, len(h.fields)+len(fields))
 	copy(newFields, h.fields)
 	copy(newFields[len(h.fields):], fields)

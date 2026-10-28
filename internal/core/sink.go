@@ -3,11 +3,8 @@ package core
 import (
 	"bufio"
 	"context"
-	"errors"
 	"io"
 	"os"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -23,7 +20,8 @@ type Sink struct {
 	records chan types.Record
 	done    chan struct{}
 
-	level types.Level
+	level     types.Level
+	formatter formatter
 
 	writer *bufio.Writer
 	closer closer
@@ -32,6 +30,9 @@ type Sink struct {
 
 	startOnce sync.Once
 	stopOnce  sync.Once
+
+	queueMu sync.RWMutex
+	stopped bool
 
 	errMu sync.Mutex
 	err   error
@@ -50,6 +51,26 @@ func NewSink(
 		out io.Writer
 		c   closer
 	)
+
+	var f formatter
+
+	switch cfg.Format {
+	case types.FormatText:
+		f = textFormatter{
+			timestampFormat: cfg.TimestampFormat,
+		}
+
+	case types.FormatJSON:
+		f = jsonFormatter{
+			timestampFormat: cfg.TimestampFormat,
+		}
+
+	default:
+		return nil, errorc.With(
+			errorspkg.ErrInvalidSinkFormat,
+			errorc.String(keys.SinkFormat, string(cfg.Format)),
+		)
+	}
 
 	switch cfg.Kind {
 	case types.KindStdOut:
@@ -85,6 +106,7 @@ func NewSink(
 		records:       make(chan types.Record, cfg.QueueSize),
 		done:          make(chan struct{}),
 		level:         cfg.Level,
+		formatter:     f,
 		writer:        bufio.NewWriterSize(out, cfg.BufferSize),
 		closer:        c,
 		flushInterval: cfg.FlushInterval,
@@ -96,7 +118,18 @@ func (s *Sink) enabled(level types.Level) bool {
 }
 
 func (s *Sink) enqueue(r types.Record) {
-	s.records <- r
+	s.queueMu.RLock()
+	defer s.queueMu.RUnlock()
+
+	if s.stopped {
+		return
+	}
+
+	select {
+	case s.records <- r:
+	default:
+		// Queue full: drop the record.
+	}
 }
 
 func (s *Sink) start() {
@@ -107,6 +140,10 @@ func (s *Sink) start() {
 
 func (s *Sink) stop() {
 	s.stopOnce.Do(func() {
+		s.queueMu.Lock()
+		defer s.queueMu.Unlock()
+
+		s.stopped = true
 		close(s.records)
 	})
 }
@@ -134,7 +171,10 @@ func (s *Sink) run() {
 		select {
 		case r, ok := <-s.records:
 			if !ok {
-				s.flush()
+				if s.getError() == nil {
+					s.flush()
+				}
+
 				s.closeOutput()
 				return
 			}
@@ -142,7 +182,9 @@ func (s *Sink) run() {
 			s.write(r)
 
 		case <-ticker.C:
-			s.flush()
+			if s.getError() == nil {
+				s.flush()
+			}
 		}
 	}
 }
@@ -152,36 +194,17 @@ func (s *Sink) write(r types.Record) {
 		return
 	}
 
-	var b strings.Builder
-
-	b.WriteString(r.Time.Format(time.RFC3339Nano))
-	b.WriteByte(' ')
-	b.WriteString(r.Level.String())
-	b.WriteByte(' ')
-	b.WriteString(r.Message)
-
-	for _, field := range r.Fields {
-		if field.Key == "" && field.Value == "" {
-			continue
-		}
-
-		b.WriteByte(' ')
-
-		if field.Key != "" {
-			b.WriteString(string(field.Key))
-			b.WriteByte('=')
-		}
-
-		b.WriteString(strconv.Quote(field.Value))
+	data, err := s.formatter.Format(r)
+	if err != nil {
+		// Skip this record, but keep the sink operational.
+		return
 	}
 
-	b.WriteByte('\n')
-
-	if _, err := s.writer.WriteString(b.String()); err != nil {
+	if _, errWrite := s.writer.Write(data); errWrite != nil {
 		s.setError(
 			errorc.With(
 				errorspkg.ErrCannotWriteLogRecord,
-				errorc.Error(keys.Cause, err),
+				errorc.Error(keys.Cause, errWrite),
 			),
 		)
 	}
@@ -216,7 +239,9 @@ func (s *Sink) setError(err error) {
 	s.errMu.Lock()
 	defer s.errMu.Unlock()
 
-	s.err = errors.Join(s.err, err)
+	if s.err == nil {
+		s.err = err
+	}
 }
 
 func (s *Sink) getError() error {

@@ -17,7 +17,7 @@ import (
 
 // Config is meant to be embedded into application config.
 type Config struct {
-	AppName string       `yaml:"app_name,omitempty"`
+	AppName string       `yaml:"app_name,omitempty" env:"APP_NAME"`
 	Sinks   []SinkConfig `yaml:"sinks,omitempty" defaultElem:"dive" validateElem:"dive"`
 }
 
@@ -26,7 +26,7 @@ type SinkConfig struct {
 	Kind            types.Kind            `yaml:"kind" default:"stderr" validate:"oneof(stdout,stderr,file)"` // +remote in v2
 	Format          types.Format          `yaml:"format" default:"text" validate:"oneof(json,text)"`
 	Level           types.Level           `yaml:"level" default:"0" validate:"oneof(-8,-4,0,4,8,12)"`
-	TimestampFormat types.TimestampFormat `yaml:"timestamp_format" default:"rfc3339nano" validate:"oneof(rfc3339nano,rfc3339)"`
+	TimestampFormat types.TimestampFormat `yaml:"timestamp_format" env:"TIMESTAMP_FORMAT" default:"rfc3339nano" validate:"oneof(rfc3339nano,rfc3339)"`
 	QueueSize       int                   `yaml:"queue_size" env:"QUEUE_SIZE" default:"1024" validate:"min(1)"`
 	BufferSize      int                   `yaml:"buffer_size" env:"BUFFER_SIZE" default:"65536" validate:"min(1)"`
 	FlushInterval   time.Duration         `yaml:"flush_interval" env:"FLUSH_INTERVAL" default:"1s" validate:"nonZeroDuration"`
@@ -125,7 +125,10 @@ func (c *Config) Validate(ctx context.Context) error {
 			return errorc.With(
 				errors.ErrInvalidConfig,
 				errorc.String(keyslib.New("sink.kind"), string(sink.Kind)),
-				errorc.String(keyslib.New("validation"), "path is required for file sink"),
+				errorc.String(
+					keyslib.New("validation"),
+					"app_name or path is required for file sink",
+				),
 			)
 		}
 	}

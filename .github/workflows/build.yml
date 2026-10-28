@@ -1,36 +1,123 @@
+
 name: build
+
 on:
   push:
     branches:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  dependencies:
+    name: Verify vendored dependencies
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        go-version: [ 1.22.x, 1.23.x, 1.24.x, 1.25.x, 1.26.x, stable ]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.x'
+
+      - name: Verify vendor directory
+        run: |
+          go mod vendor
+          git diff --exit-code -- go.mod go.sum vendor/
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
       - name: Setup Go
-        uses: actions/setup-go@v7.0.0
+        uses: actions/setup-go@v7
         with:
-          go-version: ${{ matrix.go-version }}
-          check-latest: true
-      - name: Dependencies
-        run: go mod tidy
-      - name: lint
+          go-version: '1.27.x'
+
+      - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: v2.13.2
+          version: v2.15.0
           args: --timeout=10m
-      - name: test
-        run: make test
-      - name: Upload artifacts
-        if: matrix.go-version == 'stable'
+
+  test:
+    name: Test (${{ matrix.os }}, Go ${{ matrix.go-version }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            go-version: '1.25.x'
+          - os: ubuntu-latest
+            go-version: '1.26.x'
+          - os: ubuntu-latest
+            go-version: '1.27.x'
+          - os: macos-latest
+            go-version: '1.27.x'
+          - os: windows-latest
+            go-version: '1.25.x'
+          - os: windows-latest
+            go-version: '1.27.x'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Test
+        run: go test ./... -count=1 -timeout=600s
+
+  race:
+    name: Race detector
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.x'
+
+      - name: Race tests
+        run: go test -race ./... -count=1 -timeout=600s
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Go
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.x'
+
+      - name: Generate coverage
+        run: make test-cov
+
+      - name: Upload coverage
         uses: actions/upload-artifact@v7
         with:
           name: coverage
-          path: .tests/coverage.html
+          path: .coverage/
+          retention-days: 14
+          if-no-files-found: error

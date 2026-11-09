@@ -5,7 +5,7 @@ go 1.25.12
 require (
 	github.com/ygrebnov/errorc v0.6.1
 	github.com/ygrebnov/keys v0.2.0
-	github.com/ygrebnov/model v0.7.5
+	github.com/ygrebnov/model v0.8.0
 	golang.org/x/sys v0.43.1-0.20260408233230-690c91f6ecf3
 )
 

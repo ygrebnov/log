@@ -2,8 +2,9 @@ package config
 
 import (
 	"context"
-	"strconv"
+	nativeerrors "errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ygrebnov/errorc"
@@ -11,8 +12,6 @@ import (
 	"github.com/ygrebnov/log/pkg/errors"
 	"github.com/ygrebnov/log/pkg/types"
 	modellib "github.com/ygrebnov/model"
-	modelliberrors "github.com/ygrebnov/model/pkg/errors"
-	"github.com/ygrebnov/model/pkg/keys"
 )
 
 // Config is meant to be embedded into application config.
@@ -29,94 +28,43 @@ type SinkConfig struct {
 	TimestampFormat types.TimestampFormat `yaml:"timestamp_format" env:"TIMESTAMP_FORMAT" default:"rfc3339nano" validate:"oneof(rfc3339nano,rfc3339)"`
 	QueueSize       int                   `yaml:"queue_size" env:"QUEUE_SIZE" default:"1024" validate:"min(1)"`
 	BufferSize      int                   `yaml:"buffer_size" env:"BUFFER_SIZE" default:"65536" validate:"min(1)"`
-	FlushInterval   time.Duration         `yaml:"flush_interval" env:"FLUSH_INTERVAL" default:"1s" validate:"nonZeroDuration"`
+	FlushInterval   time.Duration         `yaml:"flush_interval" env:"FLUSH_INTERVAL" default:"1s" validate:"min(1ns)"`
 }
 
-var binding *modellib.Binding[Config]
-var validationRules []modellib.Rule
+var (
+	binding    *modellib.Binding[Config]
+	bindingErr error
+	newBinding sync.Once
+)
 
-func init() {
-	oneOfLevelRule, err := getOneOfUnderlyingIntRule[types.Level]()
-	if err != nil {
-		panic(err)
-	}
-
-	nonZeroDurationRule, err := getNonZeroDurationRule()
-	if err != nil {
-		panic(err)
-	}
-
-	validationRules = []modellib.Rule{
-		oneOfLevelRule,
-		nonZeroDurationRule,
-	}
-
-	binding, err = modellib.NewBinding[Config](modellib.WithRules(validationRules...))
-	if err != nil {
-		panic(err)
-	}
-}
-
-func GetValidationRules() []modellib.Rule {
-	return validationRules
-}
-
-func getOneOfUnderlyingIntRule[T ~int]() (modellib.Rule, error) {
-	return modellib.NewRule[T]("oneof", func(v T, params ...string) error {
-		if len(params) == 0 {
-			return errorc.With(
-				modelliberrors.ErrRuleMissingParameter,
-				errorc.String(keys.RuleName, "oneof"),
-			)
-		}
-		for _, p := range params {
-			paramValue, err := strconv.Atoi(p)
-			if err != nil {
-				return errorc.With(
-					modelliberrors.ErrRuleInvalidParameter,
-					errorc.String(keys.RuleName, "oneof"),
-					errorc.String(keys.RuleParamName, "allowed"),
-					errorc.String(keys.RuleParamValue, p),
-				)
-			}
-			if int(v) == paramValue {
-				return nil
-			}
-		}
-
-		return errorc.With(
-			modelliberrors.ErrRuleConstraintViolated,
-			errorc.String(keys.RuleName, "oneof"),
-			errorc.String(keys.RuleParamName, "allowed"),
-			errorc.String(keys.RuleParamValue, strings.Join(params, ",")),
-		)
+func getBinding() (*modellib.Binding[Config], error) {
+	newBinding.Do(func() {
+		binding, bindingErr = modellib.NewBinding[Config]()
 	})
+	return binding, bindingErr
 }
 
-func getNonZeroDurationRule() (modellib.Rule, error) {
-	return modellib.NewRule("nonZeroDuration", func(v time.Duration, _ ...string) error {
-		if v < 1 {
-			return errorc.With(
-				modelliberrors.ErrRuleConstraintViolated,
-				errorc.String(keys.RuleName, "nonZeroDuration"),
-				errorc.String(keyslib.New("sink.flush.interval"), v.String()),
-			)
-		}
-
-		return nil
-	})
-}
-
-// ApplyDefaults sets defaults values for non-empty fields. Operation is idempotent, however may mutate the object.
+// ApplyDefaults sets defaults values for non-empty fields.
+// Operation is idempotent, however may mutate the object.
 func (c *Config) ApplyDefaults() error {
-	return binding.ApplyDefaults(c)
+	b, err := getBinding()
+	if err != nil {
+		return err
+	}
+
+	return b.ApplyDefaults(c)
 }
 
 func (c *Config) Validate(ctx context.Context) error {
-	if err := binding.Validate(ctx, c); err != nil {
-		return errorc.With(
+	b, err := getBinding()
+	if err != nil {
+		return err
+	}
+
+	if errValidate := b.Validate(ctx, c); errValidate != nil {
+		return nativeerrors.Join(
 			errors.ErrInvalidConfig,
-			errorc.Error(keyslib.New("validation"), err),
+			errValidate,
 		)
 	}
 
@@ -132,5 +80,6 @@ func (c *Config) Validate(ctx context.Context) error {
 			)
 		}
 	}
+
 	return nil
 }

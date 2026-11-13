@@ -2,15 +2,13 @@ package types
 
 import (
 	"context"
-	"strconv"
-	"strings"
+	nativeerrors "errors"
+	"sync"
 	"time"
 
 	"github.com/ygrebnov/errorc"
 	"github.com/ygrebnov/log/pkg/errors"
 	modellib "github.com/ygrebnov/model"
-	modelliberrors "github.com/ygrebnov/model/pkg/errors"
-	"github.com/ygrebnov/model/pkg/keys"
 )
 
 type Record struct {
@@ -20,69 +18,30 @@ type Record struct {
 	Fields  []Field   `yaml:"fields"`
 }
 
-var recordBinding *modellib.Binding[Record]
-var validationRules []modellib.Rule
+var (
+	recordBinding    *modellib.Binding[Record]
+	recordBindingErr error
+	newRecordBinding sync.Once
+)
 
-func init() {
-	oneOfLevelRule, err := getOneOfUnderlyingIntRule[Level]()
-	if err != nil {
-		panic(err)
-	}
-
-	validationRules = []modellib.Rule{
-		oneOfLevelRule,
-	}
-
-	recordBinding, err = modellib.NewBinding[Record](modellib.WithRules(validationRules...))
-	if err != nil {
-		panic(err)
-	}
-}
-
-func GetValidationRules() []modellib.Rule {
-	rules := make([]modellib.Rule, len(validationRules))
-	copy(rules, validationRules)
-
-	return rules
-}
-
-func getOneOfUnderlyingIntRule[T ~int]() (modellib.Rule, error) {
-	return modellib.NewRule[T]("oneof", func(v T, params ...string) error {
-		if len(params) == 0 {
-			return errorc.With(
-				modelliberrors.ErrRuleMissingParameter,
-				errorc.String(keys.RuleName, "oneof"),
-			)
-		}
-		for _, p := range params {
-			paramValue, err := strconv.Atoi(p)
-			if err != nil {
-				return errorc.With(
-					modelliberrors.ErrRuleInvalidParameter,
-					errorc.String(keys.RuleName, "oneof"),
-					errorc.String(keys.RuleParamName, "allowed"),
-					errorc.String(keys.RuleParamValue, p),
-				)
-			}
-			if int(v) == paramValue {
-				return nil
-			}
-		}
-
-		return errorc.With(
-			modelliberrors.ErrRuleConstraintViolated,
-			errorc.String(keys.RuleName, "oneof"),
-			errorc.String(keys.RuleParamName, "allowed"),
-			errorc.String(keys.RuleParamValue, strings.Join(params, ",")),
-		)
+func getRecordBinding() (*modellib.Binding[Record], error) {
+	newRecordBinding.Do(func() {
+		recordBinding, recordBindingErr = modellib.NewBinding[Record]()
 	})
+
+	return recordBinding, recordBindingErr
 }
 
 func (r Record) Validate(ctx context.Context) error {
-	if err := recordBinding.Validate(ctx, &r); err != nil {
-		return errorc.With(
+	b, err := getRecordBinding()
+	if err != nil {
+		return err
+	}
+
+	if errValidate := b.Validate(ctx, &r); errValidate != nil {
+		return nativeerrors.Join(
 			errors.ErrInvalidRecord,
-			errorc.Error("validation", err),
+			errValidate,
 		)
 	}
 

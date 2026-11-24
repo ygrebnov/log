@@ -1,19 +1,25 @@
 package fs
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
 
+	sharedfs "github.com/ygrebnov/fs"
+	fspath "github.com/ygrebnov/fs/path"
 	"github.com/ygrebnov/log/pkg/config"
+	errorspkg "github.com/ygrebnov/log/pkg/errors"
 )
 
-func TestValidateBaseWithinHome(t *testing.T) {
+func TestSharedValidateWithinHome(t *testing.T) {
 	home := filepath.Join(string(filepath.Separator), "home", "alice")
 	if runtime.GOOS == "windows" {
 		home = `C:\Users\alice`
 	}
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 
 	tests := []struct {
 		name    string
@@ -33,10 +39,10 @@ func TestValidateBaseWithinHome(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateBaseWithinHome(home, tt.base)
+			err := fspath.ValidateWithinHome(tt.base)
 			if (err != nil) != tt.wantErr {
 				t.Fatalf(
-					"validateBaseWithinHome(%q, %q) error = %v; wantErr %v",
+					"ValidateWithinHome(%q, %q) error = %v; wantErr %v",
 					home, tt.base, err, tt.wantErr,
 				)
 			}
@@ -209,6 +215,10 @@ func TestOpenWriterRejectsInsecureExistingFile(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for insecure file permissions")
 	}
+	if !errors.Is(err, errorspkg.ErrInsecurePermissions) ||
+		!errors.Is(err, sharedfs.ErrInsecurePermissions) {
+		t.Fatalf("permission error chain = %v", err)
+	}
 
 	info, err := os.Stat(path)
 	if err != nil {
@@ -284,6 +294,10 @@ func TestOpenWriterRejectsInsecureDefaultDirectory(t *testing.T) {
 
 	if err == nil {
 		t.Fatal("expected error for insecure application directory permissions")
+	}
+	if !errors.Is(err, errorspkg.ErrInsecurePermissions) ||
+		!errors.Is(err, sharedfs.ErrInsecurePermissions) {
+		t.Fatalf("permission error chain = %v", err)
 	}
 
 	info, err := os.Stat(logDir)

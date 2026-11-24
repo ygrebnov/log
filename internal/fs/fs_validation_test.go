@@ -8,6 +8,11 @@ import (
 )
 
 func TestValidateAppName(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_DATA_HOME", home)
+	t.Setenv("APPDATA", home)
 	tests := []struct {
 		name    string
 		appName string
@@ -270,12 +275,12 @@ func TestValidateAppName(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateAppName(tt.appName)
+			_, err := getLogDir(tt.appName)
 
 			if tt.wantErr {
 				if !errors.Is(err, errorspkg.ErrInvalidAppName) {
 					t.Fatalf(
-						"validateAppName(%q) error = %v, want ErrInvalidAppName",
+						"getLogDir(%q) error = %v, want ErrInvalidAppName",
 						tt.appName,
 						err,
 					)
@@ -286,7 +291,7 @@ func TestValidateAppName(t *testing.T) {
 
 			if err != nil {
 				t.Fatalf(
-					"validateAppName(%q) unexpected error: %v",
+					"getLogDir(%q) unexpected error: %v",
 					tt.appName,
 					err,
 				)

@@ -8,6 +8,11 @@ lint: install-golangci-lint
 	@echo "Running linter..."
 	$(GOLANGCI_LINT) run
 
+.PHONY: vulncheck
+vulncheck: install-govulncheck
+	@echo "Checking for known vulnerabilities..."
+	$(GOVULNCHECK) ./...
+
 .PHONY: test
 test:
 	@echo "Running tests..."
@@ -39,5 +44,5 @@ cross-compile-windows:
 	  go test ./... -run '^$$' -exec=true
 
 .PHONY: verify
-verify: lint test-race cross-compile-windows
+verify: lint vulncheck test-race cross-compile-windows
 	@echo "All verifications passed successfully."

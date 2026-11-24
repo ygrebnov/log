@@ -16,4 +16,6 @@ var (
 	SinkFormat = sink("format")
 
 	Cause = keys.New("cause")
+
+	Validation = keys.New("validation")
 )

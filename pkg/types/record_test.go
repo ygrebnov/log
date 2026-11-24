@@ -8,6 +8,7 @@ import (
 
 	"github.com/ygrebnov/keys"
 	logerrors "github.com/ygrebnov/log/pkg/errors"
+	"github.com/ygrebnov/model/validation"
 )
 
 func TestRecord(t *testing.T) {
@@ -279,6 +280,24 @@ func TestRecord(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRecord_Validate_UnwrapsModelValidationError(t *testing.T) {
+	record := NewRecord(time.Now(), LevelInfo, "")
+
+	err := record.Validate(context.Background())
+	if !errors.Is(err, logerrors.ErrInvalidRecord) {
+		t.Fatalf("Validate() error = %v, want ErrInvalidRecord", err)
+	}
+
+	var validationErr *validation.Error
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("Validate() error = %v, want *validation.Error in chain", err)
+	}
+	issues := validationErr.Issues()
+	if len(issues) != 1 || issues[0].Path != "Message" || issues[0].Rule != "min" {
+		t.Fatalf("validation issues = %+v, want Message min violation", issues)
 	}
 }
 

@@ -2,14 +2,13 @@ package config
 
 import (
 	"context"
-	nativeerrors "errors"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/ygrebnov/errorc"
-	keyslib "github.com/ygrebnov/keys"
 	"github.com/ygrebnov/log/pkg/errors"
+	"github.com/ygrebnov/log/pkg/keys"
 	"github.com/ygrebnov/log/pkg/types"
 	modellib "github.com/ygrebnov/model"
 )
@@ -62,19 +61,16 @@ func (c *Config) Validate(ctx context.Context) error {
 	}
 
 	if errValidate := b.Validate(ctx, c); errValidate != nil {
-		return nativeerrors.Join(
-			errors.ErrInvalidConfig,
-			errValidate,
-		)
+		return errorc.WithCause(errors.ErrInvalidConfig, errValidate)
 	}
 
 	for _, sink := range c.Sinks {
 		if c.AppName == "" && sink.Kind == types.KindFile && strings.TrimSpace(sink.Path) == "" {
 			return errorc.With(
 				errors.ErrInvalidConfig,
-				errorc.String(keyslib.New("sink.kind"), string(sink.Kind)),
+				errorc.String(keys.SinkKind, string(sink.Kind)),
 				errorc.String(
-					keyslib.New("validation"),
+					keys.Validation,
 					"app_name or path is required for file sink",
 				),
 			)

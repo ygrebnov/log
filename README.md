@@ -1,4 +1,4 @@
-**log** is a type-safe, asynchronous logging library for Go supporting multiple output sinks and structured fields. Written by [ygrebnov](https://github.com/ygrebnov).
+**log** is a type-safe, asynchronous logging library for Go supporting multiple output sinks and structured fields.
 
 ---
 
@@ -138,7 +138,7 @@ For containerized applications, prefer stdout/stderr logging where appropriate. 
 
 ## Installation
 
-Requires Go 1.25.12 or later.
+Requires Go 1.26.11 or later.
 
 ```shell
 go get github.com/ygrebnov/log@latest

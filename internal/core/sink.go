@@ -82,10 +82,7 @@ func NewSink(
 	case types.KindFile:
 		w, fileCloser, err := fs.OpenWriter(cfg, appName)
 		if err != nil {
-			return nil, errorc.With(
-				errorspkg.ErrCannotOpenFileWriter,
-				errorc.Error(keys.Cause, err),
-			)
+			return nil, errorc.WithCause(errorspkg.ErrCannotOpenFileWriter, err)
 		}
 
 		out = w
@@ -202,10 +199,7 @@ func (s *Sink) write(r types.Record) {
 
 	if _, errWrite := s.writer.Write(data); errWrite != nil {
 		s.setError(
-			errorc.With(
-				errorspkg.ErrCannotWriteLogRecord,
-				errorc.Error(keys.Cause, errWrite),
-			),
+			errorc.WithCause(errorspkg.ErrCannotWriteLogRecord, errWrite),
 		)
 	}
 }
@@ -213,10 +207,7 @@ func (s *Sink) write(r types.Record) {
 func (s *Sink) flush() {
 	if err := s.writer.Flush(); err != nil {
 		s.setError(
-			errorc.With(
-				errorspkg.ErrCannotFlushWriter,
-				errorc.Error(keys.Cause, err),
-			),
+			errorc.WithCause(errorspkg.ErrCannotFlushWriter, err),
 		)
 	}
 }

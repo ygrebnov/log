@@ -2,12 +2,12 @@ package types
 
 import (
 	"context"
-	nativeerrors "errors"
 	"sync"
 	"time"
 
 	"github.com/ygrebnov/errorc"
 	"github.com/ygrebnov/log/pkg/errors"
+	"github.com/ygrebnov/log/pkg/keys"
 	modellib "github.com/ygrebnov/model"
 )
 
@@ -39,16 +39,13 @@ func (r Record) Validate(ctx context.Context) error {
 	}
 
 	if errValidate := b.Validate(ctx, &r); errValidate != nil {
-		return nativeerrors.Join(
-			errors.ErrInvalidRecord,
-			errValidate,
-		)
+		return errorc.WithCause(errors.ErrInvalidRecord, errValidate)
 	}
 
 	if r.Time.IsZero() {
 		return errorc.With(
 			errors.ErrInvalidRecord,
-			errorc.String("validation", "time must not be zero"),
+			errorc.String(keys.Validation, "time must not be zero"),
 		)
 	}
 
@@ -58,7 +55,7 @@ func (r Record) Validate(ctx context.Context) error {
 				errors.ErrInvalidRecord,
 				errorc.Int("field_index", i),
 				errorc.String(
-					"validation",
+					keys.Validation,
 					"field must not be nil and must have a non-empty key",
 				),
 			)

@@ -98,7 +98,7 @@ func (l Level) MarshalJSON() ([]byte, error) {
 func (l *Level) UnmarshalJSON(data []byte) error {
 	var value string
 	if err := json.Unmarshal(data, &value); err != nil {
-		return errorc.With(errors.ErrInvalidLogLevel, errorc.Error(keyspkg.Cause, err))
+		return errorc.WithCause(errors.ErrInvalidLogLevel, err)
 	}
 
 	return l.UnmarshalText([]byte(value))

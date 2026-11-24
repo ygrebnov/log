@@ -61,10 +61,7 @@ func OpenWriter(cfg *config.SinkConfig, appName string) (io.Writer, Closer, erro
 	// the default destination. Subsequent traversal stays beneath it.
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return nil, nil, errorc.With(
-			errorspkg.ErrCannotResolveUserHomeDir,
-			errorc.Error(keys.Cause, err),
-		)
+		return nil, nil, errorc.WithCause(errorspkg.ErrCannotResolveUserHomeDir, err)
 	}
 
 	homeRoot, err := os.OpenRoot(home)
@@ -172,10 +169,7 @@ func openFile(root *os.Root, name, displayPath string) (io.Writer, Closer, error
 
 func logPermissionError(err error) error {
 	if errors.Is(err, sharedfs.ErrInsecurePermissions) {
-		return errorc.With(
-			errorspkg.ErrInsecurePermissions,
-			errorc.Error(keys.Cause, err),
-		)
+		return errorc.WithCause(errorspkg.ErrInsecurePermissions, err)
 	}
 	return err
 }
@@ -188,20 +182,23 @@ func getLogDir(appName string) (string, error) {
 		case errors.Is(err, fspath.ErrInvalidAppName):
 			return "", errorspkg.ErrInvalidAppName
 		case errors.Is(err, fspath.ErrCannotResolveHome):
-			return "", errorc.With(errorspkg.ErrCannotResolveUserHomeDir, errorc.Error(keys.Cause, err))
+			return "", errorc.WithCause(errorspkg.ErrCannotResolveUserHomeDir, err)
 		default:
-			return "", errorc.With(errorspkg.ErrCannotAccessLogFilePath, errorc.Error(keys.Cause, err))
+			return "", errorc.WithCause(errorspkg.ErrCannotAccessLogFilePath, err)
 		}
 	}
-	if err := fspath.ValidateWithinHome(dir); err != nil {
-		if errors.Is(err, fspath.ErrCannotResolveHome) {
-			return "", errorc.With(errorspkg.ErrCannotResolveUserHomeDir, errorc.Error(keys.Cause, err))
+
+	if errValidate := fspath.ValidateWithinHome(dir); errValidate != nil {
+		if errors.Is(errValidate, fspath.ErrCannotResolveHome) {
+			return "", errorc.WithCause(errorspkg.ErrCannotResolveUserHomeDir, errValidate)
 		}
+
 		return "", errorc.With(
 			errorspkg.ErrCannotAccessLogFilePath,
 			errorc.String(keys.LogDir, dir),
-			errorc.Error(keys.Cause, err),
+			errorc.Error(keys.Cause, errValidate),
 		)
 	}
+
 	return dir, nil
 }

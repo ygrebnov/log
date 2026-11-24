@@ -10,6 +10,7 @@ import (
 	"github.com/ygrebnov/log/pkg/config"
 	logerrors "github.com/ygrebnov/log/pkg/errors"
 	"github.com/ygrebnov/log/pkg/types"
+	"github.com/ygrebnov/model/validation"
 )
 
 func TestConfig_ApplyDefaults(t *testing.T) {
@@ -614,6 +615,26 @@ func TestConfig_Validate_Invalid(t *testing.T) {
 				)
 			}
 		})
+	}
+}
+
+func TestConfig_Validate_UnwrapsModelValidationError(t *testing.T) {
+	sink := validSink(types.KindStdOut)
+	sink.QueueSize = 0
+	cfg := config.Config{Sinks: []config.SinkConfig{sink}}
+
+	err := cfg.Validate(context.Background())
+	if !errors.Is(err, logerrors.ErrInvalidConfig) {
+		t.Fatalf("Validate() error = %v, want ErrInvalidConfig", err)
+	}
+
+	var validationErr *validation.Error
+	if !errors.As(err, &validationErr) {
+		t.Fatalf("Validate() error = %v, want *validation.Error in chain", err)
+	}
+	issues := validationErr.Issues()
+	if len(issues) != 1 || issues[0].Path != "Sinks[0].QueueSize" || issues[0].Rule != "min" {
+		t.Fatalf("validation issues = %+v, want QueueSize min violation", issues)
 	}
 }
 

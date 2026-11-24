@@ -8,6 +8,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
+	sharedfs "github.com/ygrebnov/fs"
 	"github.com/ygrebnov/log/pkg/config"
 	errorspkg "github.com/ygrebnov/log/pkg/errors"
 )
@@ -29,7 +30,7 @@ func TestWindowsPrivateFileACL(t *testing.T) {
 
 	setTestPathACL(t, path, privateACL(t))
 
-	if err := validatePrivatePermissions(file); err != nil {
+	if err := sharedfs.ValidatePrivateFile(file); err != nil {
 		t.Fatalf("private ACL rejected: %v", err)
 	}
 }
@@ -51,7 +52,7 @@ func TestWindowsPrivateDirectoryACL(t *testing.T) {
 	}
 	defer root.Close()
 
-	if err := validatePrivateDirectoryPermissions(root); err != nil {
+	if err := validatePrivateRoot(t, root); err != nil {
 		t.Fatalf("private directory ACL rejected: %v", err)
 	}
 }
@@ -74,12 +75,20 @@ func TestWindowsEveryoneFileACL(t *testing.T) {
 	sddl := privateACL(t) + "(A;;FR;;;WD)"
 	setTestPathACL(t, path, sddl)
 
-	err = validatePrivatePermissions(file)
-	if !errors.Is(err, errorspkg.ErrInsecurePermissions) {
+	err = sharedfs.ValidatePrivateFile(file)
+	if !errors.Is(err, sharedfs.ErrInsecurePermissions) {
 		t.Fatalf(
 			"expected ErrInsecurePermissions, got: %v",
 			err,
 		)
+	}
+	_, closer, err := OpenWriter(&config.SinkConfig{Path: path}, "")
+	if closer != nil {
+		_ = closer.Close()
+	}
+	if !errors.Is(err, errorspkg.ErrInsecurePermissions) ||
+		!errors.Is(err, sharedfs.ErrInsecurePermissions) {
+		t.Fatalf("OpenWriter permission error chain = %v", err)
 	}
 }
 
@@ -101,8 +110,8 @@ func TestWindowsUsersDirectoryACL(t *testing.T) {
 	}
 	defer root.Close()
 
-	err = validatePrivateDirectoryPermissions(root)
-	if !errors.Is(err, errorspkg.ErrInsecurePermissions) {
+	err = validatePrivateRoot(t, root)
+	if !errors.Is(err, sharedfs.ErrInsecurePermissions) {
 		t.Fatalf(
 			"expected ErrInsecurePermissions, got: %v",
 			err,
@@ -159,8 +168,8 @@ func TestWindowsNullDACL(t *testing.T) {
 	}
 
 	// Verify that the validator rejects it.
-	err = validatePrivatePermissions(file)
-	if !errors.Is(err, errorspkg.ErrInsecurePermissions) {
+	err = sharedfs.ValidatePrivateFile(file)
+	if !errors.Is(err, sharedfs.ErrInsecurePermissions) {
 		t.Fatalf(
 			"expected ErrInsecurePermissions, got: %v",
 			err,
@@ -187,7 +196,7 @@ func TestWindowsInheritedACL(t *testing.T) {
 	}
 	defer file.Close()
 
-	if err := validatePrivatePermissions(file); err != nil {
+	if err := sharedfs.ValidatePrivateFile(file); err != nil {
 		t.Fatalf("inherited ACL rejected: %v", err)
 	}
 }
@@ -287,4 +296,14 @@ func setTestPathACL(t *testing.T, path, sddl string) {
 	); err != nil {
 		t.Fatalf("SetNamedSecurityInfo: %v", err)
 	}
+}
+
+func validatePrivateRoot(t *testing.T, root *os.Root) error {
+	t.Helper()
+	dir, err := root.Open(".")
+	if err != nil {
+		return err
+	}
+	defer dir.Close()
+	return sharedfs.ValidatePrivateDirectory(dir)
 }
